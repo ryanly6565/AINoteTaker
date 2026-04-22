@@ -1,0 +1,37 @@
+{
+  "name": "ai-notepad",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@mantine/core": "^9.1.0",
+    "@mantine/hooks": "^9.1.0",
+    "@mantine/notifications": "^9.1.0",
+    "@prisma/client": "^6.19.3",
+    "@tabler/icons-react": "^3.41.1",
+    "bcrypt": "^6.0.0",
+    "iron-session": "^8.0.4",
+    "jspdf": "^4.2.1",
+    "next": "16.2.4",
+    "prisma": "^6.19.3",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.5.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^4.2.4",
+    "typescript": "^5"
+  }
+}
