@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
-    const { title, content, tag } = await request.json();
+    const { name } = await request.json();
 
     const cookieData = await cookies()
     const session = await getIronSession<SessionData>(
@@ -16,33 +16,26 @@ export async function POST(request: Request) {
       sessionOptions
     );
 
-    const authorId = session.userId;
+    const ownerId = session.userId;
 
-    if (!authorId) {
+    if (!ownerId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const newNote = await prisma.note.create({
+    const newTag = await prisma.tag.create({
       data: {
-        title: title || "Untitled Note",
-        content: content || "",
-        tags: {
-          connect: {
-            id: tag.id
-          }
-        },
-        authorId,
-        canDelete: false,
+        name,
+        ownerId
       },
     });
 
-    return NextResponse.json(newNote, { status: 201 });
+    return NextResponse.json(newTag, { status: 201 });
 
   } catch (error: any) {
-    console.error("Error creating note:", error);
+    console.error("Error creating tag:", error);
 
     return NextResponse.json(
-      { error: "Failed to create note", details: error.message },
+      { error: "Failed to create tag", details: error.message },
       { status: 500 }
     );
   }

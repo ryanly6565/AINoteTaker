@@ -81,7 +81,21 @@ export default function Sidebar({ opened }) {
         }
 
         try {
-            await createTag();
+            const usedNumbers = tags
+                .map(tag => {
+                    const match = tag.name.match(/^Tag (\d+)$/);
+                    return match ? parseInt(match[1]) : null;
+                })
+                .filter(n => n !== null);
+
+            const nextNumber =
+                usedNumbers.length > 0
+                    ? Math.max(...usedNumbers) + 1
+                    : 1;
+            
+            const defaultName = `Tag ${nextNumber}`;
+            
+            await createTag(defaultName);
             notifications.show({
                 color: 'green',
                 title: 'Success',
@@ -224,8 +238,8 @@ export default function Sidebar({ opened }) {
                     {/* Regular Tags */}
                     {tags.map(tag => (
                         <NavLink
-                            key={tag}
-                            label={`Tag ${tag}`}
+                            key={tag.id}
+                            label={`${tag.name}`}
                             opened={expandedTags[tag]}
                             onClick={() => toggleTag(tag)}
                             onDragOver={handleDragOver}

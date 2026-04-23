@@ -5,9 +5,16 @@ import {useAuth} from "@/context/AuthContext";
 
 const NotesContext = createContext();
 
+interface Tag {
+  id: number;
+  ownerId: number;
+  name: string;
+  notes?: {title:string};
+}
+
 export function NotesProvider({ children }) {
-    const [notes, setNotes] = useState([]);
-    const [tags, setTags] = useState([]);
+    const [notes, setNotes] = useState<any[]>([]);
+    const [tags, setTags] = useState<Tag[]>([]);
     const [initialLoad, setInitialLoad] = useState(true);
     const [activeNoteId, setActiveNoteId] = useState(null);
     const [openedNotesIds, setOpenedNoteIds] = useState([]);
@@ -24,10 +31,9 @@ export function NotesProvider({ children }) {
             if (response.ok) {
                 const data = await response.json();
                 console.log("Backend response:", data);
-                setNotes(data);
+                setNotes(data.notes);
                 // Extract unique tags from notes
-                const uniqueTags = [...new Set(data.map(note => note.tag))].filter(tag => tag !== -1).sort((a, b) => a - b);
-                setTags(uniqueTags);
+                setTags(data.tags);
             }
         } catch (error) {
             console.error('Error fetching notes:', error);
@@ -52,18 +58,28 @@ export function NotesProvider({ children }) {
         throw new Error('Failed to create note');
     };
 
-    const createTag = async () => {
+    const createTag = async (name: string) => {
         try {
-            if (!user.isLoggedIn) {
+            if (!user?.isLoggedIn) {
                 throw new Error('User not logged in');
             }
 
-            // Find the highest existing tag number
-            const maxTag = Math.max(...tags, 0);
-            const newTag = maxTag + 1;
+            const response = await fetch('/api/tags/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ name }),
+            });
 
-            // Add the new tag to the state
-            setTags(prevTags => [...prevTags, newTag].sort((a, b) => a - b));
+            if (!response.ok) {
+                throw new Error('Failed to create tag');
+            }
+
+            const newTag = await response.json();
+
+            setTags(prev => [...prev, newTag]);
+
             return newTag;
         } catch (error) {
             console.error('Error creating tag:', error);
@@ -114,37 +130,53 @@ export function NotesProvider({ children }) {
     }
 
     // Declare one update function for automatic in-memory updates, and the other for persisting changes to DB
-    const updateNoteLocally = (noteData) => {
-        setNotes((prevNotes) =>
-            prevNotes.map((note) =>
-                note.id === noteData.id ? noteData : note
-            )
+    const updateNoteLocally = (noteData: any) => {
+        console.log("SELECTED VALUES:", noteData);
+        setNotes((prevNotes: any) =>
+            prevNotes.map((note: any) => {
+                if (note.id !== noteData.id) return note;
+
+                console.log("SELECTED VALUES 12:", note.tags)
+
+                return {
+                    ...note,
+                    ...noteData,
+                    tags: noteData.tags ?? []
+                };
+            })
         );
 
-        if (activeNote && activeNote.id === noteData.id) {
+        if (activeNoteId === noteData.id) {
             setActiveNoteId(noteData.id);
         }
-    }
+    };
 
     /* Update note in DB - Call periodically to persist changes */
     const updateNoteInDB = async (noteData) => {
+        const safeNoteData = {
+            ...noteData,
+            tags: noteData.tags
+        };
+
         const response = await fetch('/api/notes/update', {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(noteData),
+            body: JSON.stringify(safeNoteData),
         });
 
         if (response.ok) {
             const updatedNote = await response.json();
-            setNotes(prevNotes =>
-                prevNotes.map(note =>
+
+            setNotes((prevNotes) =>
+            prevNotes.map((note) =>
                 note.id === updatedNote.id ? updatedNote : note
-                )
+            )
             );
             return updatedNote;
         }
+
         throw new Error('Failed to update note');
     };
 

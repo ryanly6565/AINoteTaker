@@ -42,12 +42,12 @@ export default function NotePreview(props: NotePreviewProps) {
         >
             <Stack gap={4} flex={1}>
                 <Flex justify="space-between" gap="xs">
-                    <Text size="md" fw={700} truncate>
+                    <Text size="md" fw={700} truncate component="span">
                         <Highlight highlight={searchQuery || ""}>{note.title}</Highlight>
                     </Text>
                     <Badge miw={32}>{note.tag}</Badge>
                 </Flex>
-                <Text size="sm" c="dimmed" fw={500} lineClamp={4}>
+                <Text size="sm" c="dimmed" fw={500} lineClamp={4} component="span">
                     <Highlight highlight={searchQuery || ""}>{note.content}</Highlight>
                 </Text>
             </Stack>

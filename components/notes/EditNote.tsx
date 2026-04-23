@@ -1,6 +1,6 @@
 'use client'
 
-import {Group, Select, Stack, Text, Textarea, TextInput, Button} from "@mantine/core";
+import {Group, Select, Stack, Text, Textarea, TextInput, Button, MultiSelect} from "@mantine/core";
 import {useNotes} from "@/context/NotesContext";
 import {useDebouncedValue} from "@mantine/hooks";
 import {ChangeEvent, useEffect, useState} from "react";
@@ -8,9 +8,17 @@ import {IconRefresh, IconTrash, IconRobot, IconArrowDown} from "@tabler/icons-re
 import {notifications} from "@mantine/notifications";
 import {useChat} from "@/context/ChatContext";
 
+import type { Note } from '@prisma/client'
+
 export interface EditNoteProps {
     note: Note;
 }
+
+const normalizeTags = (tags) =>
+  (tags ?? []).map(t => ({
+    id: t.id,
+    name: t.name
+  }));
 
 export default function EditNote({ note }: EditNoteProps) {
 
@@ -19,12 +27,15 @@ export default function EditNote({ note }: EditNoteProps) {
     const [saving, setSaving] = useState(false);
     const [hasEdited, setHasEdited] = useState(false);
     const [isLoadingAI, setIsLoadingAI] = useState(false);
+    const [selectedTags, setSelectedTags] = useState<string[]>(
+        (note.tags ?? []).map(t => t.id.toString())
+    );
     const TRASH_TAG = -1; 
 
     // Update note in DB automatically shortly after user has stopped typing
     const [debouncedTitle] = useDebouncedValue(note.title, 500);
     const [debouncedContent] = useDebouncedValue(note.content, 500);
-    const [debouncedTag] = useDebouncedValue(note.tag, 500);
+    const [debouncedTags] = useDebouncedValue(note.tags, 500);
 
     useEffect(() => {
         // Prevent API update call on initial load
@@ -49,7 +60,7 @@ export default function EditNote({ note }: EditNoteProps) {
         }
 
         updateNote();
-    }, [debouncedTitle, debouncedContent, debouncedTag]);
+    }, [debouncedTitle, debouncedContent, debouncedTags]);
 
     const handleTitleChange = (e: ChangeEvent<HTMLInputElement>) => {
         updateNoteLocally({ ...note, title: e.target.value });
@@ -58,16 +69,6 @@ export default function EditNote({ note }: EditNoteProps) {
 
     const handleContentChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
         updateNoteLocally({ ...note, content: e.target.value });
-        setHasEdited(true);
-    }
-
-    const handleTagChange = (val: string | null) => {
-        const newTag = val ? parseInt(val) : 0;
-        if (note.tag === TRASH_TAG) {
-            handleUndoDeletion(newTag);
-        }
-        
-        updateNoteLocally({ ...note, tag: newTag });
         setHasEdited(true);
     }
     
@@ -136,8 +137,8 @@ export default function EditNote({ note }: EditNoteProps) {
                 return;
               }
                 const updatedNote = await markResponse.json();
-                updateNoteLocally({ ...updatedNote, tag: TRASH_TAG});
-                updateNoteInDB({ ...updatedNote, tag: TRASH_TAG});
+                updateNoteLocally({ ...updatedNote, tags: [TRASH_TAG]});
+                updateNoteInDB({ ...updatedNote, tags: [TRASH_TAG]});
               
             } else{
                 const deleteResponse = await fetch("/api/notes/delete", {
@@ -339,14 +340,32 @@ export default function EditNote({ note }: EditNoteProps) {
     return (
         <Stack p={0} gap={0} mt="sm">
             <Group justify="space-between">
-                <Select
-                    label="Tag"
-                    placeholder="Select a tag"
-                    value={note.tag.toString()}
-                    onChange={handleTagChange}
-                    data={tags.map(tag => ({ value: tag.toString(), label: `Tag ${tag}` }))}
-                    maw={200}
-                    size="xs"
+                <MultiSelect
+                    value={selectedTags}
+                    data={tags.map(tag => ({
+                        value: tag.id.toString(),
+                        label: tag.name
+                    }))}
+                    onChange={(values) => {
+                        setSelectedTags(values);
+
+                        updateNoteLocally({
+                            ...note,
+                            tags: values.map(v => {
+                                const id = Number(v);
+                                const tag = tags.find(t => t.id === id);
+
+                                return {
+                                    id,
+                                    name: tag?.name ?? ""
+                                };
+                            })
+                        });
+
+                        setHasEdited(true);
+                    }}
+                    maxDropdownHeight={220}
+                    placeholder="Select tags"
                 />
 
                 <Group opacity={saving ? 1 : 0} style={{ transition: "opacity 0.2s" }}>

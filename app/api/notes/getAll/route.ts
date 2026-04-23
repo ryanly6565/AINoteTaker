@@ -24,7 +24,13 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(notes, { status: 200 });
+    const tags = await prisma.tag.findMany({
+      where: {
+        ownerId: userId
+      }
+    })
+
+    return NextResponse.json({ notes, tags }, { status: 200 });
 
   } catch (error: any) {
     return NextResponse.json(

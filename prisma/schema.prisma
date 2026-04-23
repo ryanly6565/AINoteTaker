@@ -19,16 +19,29 @@ model User {
   email    String   @unique
   name     String   @unique
   password String
-  notes    Note[]  @relation("UserNotes")
+  notes    Note[]   @relation("UserNotes")
+  tags     Tag[]    @relation("UserTags")
 }
 
 model Note {
   id        Int      @id @default(autoincrement())
   title     String
   content   String
-  tag       Int      @default(0)
+  tags      Tag[]    @relation("NoteTags")
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt @default(now())
   author    User     @relation("UserNotes", fields: [authorId], references: [id], onDelete: Cascade)
   authorId  Int
   canDelete Boolean  @default(false)
+
+  @@index([authorId])
+}
+
+model Tag {
+  id        Int      @id @default(autoincrement())
+  ownerId   Int
+  owner     User     @relation("UserTags", fields: [ownerId], references: [id])
+  name      String
+  notes     Note[]   @relation("NoteTags")
+  @@unique([ownerId, name])
 }

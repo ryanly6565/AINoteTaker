@@ -7,8 +7,10 @@ import { NextRequest, NextResponse } from "next/server";
  * Endpoint used to fetch the user's session status.
  */
 export async function GET(request: NextRequest) {
+    const cookieStore = await cookies();
+
     const session = await getIronSession<SessionData>(
-        cookies(),
+        cookieStore,
         sessionOptions
     );
 

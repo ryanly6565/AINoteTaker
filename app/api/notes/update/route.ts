@@ -5,8 +5,7 @@ const prisma = new PrismaClient();
 
 export async function PUT(req: NextRequest) {
   try {
-    // NOTE: Need to check whether user owns note
-    const { id, title, content, tag, format } = await req.json();
+    const { id, title, content, tags, format } = await req.json();
 
     if (!id) {
       return NextResponse.json(
@@ -16,13 +15,31 @@ export async function PUT(req: NextRequest) {
     }
 
     const updatedNote = await prisma.note.update({
-      where: { id },
-      data: { title, content, tag, format },
+      where: { id: Number(id) },
+
+      data: {
+        title,
+        content,
+        format,
+
+        ...(tags
+          ? {
+              tags: {
+                set: tags.map((t: any) => ({
+                  id: Number(t.id),
+                })),
+              },
+            }
+          : {}),
+      },
     });
+    console.log(tags)
 
     return NextResponse.json(updatedNote, { status: 200 });
 
   } catch (error: any) {
+    console.log(error);
+
     return NextResponse.json(
       { error: "Failed to update note", details: error.message },
       { status: 500 }

@@ -1,6 +1,6 @@
 'use client'
 
-import {ActionIcon, AppShellHeader, Burger, Flex, Title, useMantineColorScheme, Modal, Button, Group, Text} from "@mantine/core";
+import {ActionIcon, AppShellHeader, Burger, Flex, Title, useMantineColorScheme, Modal, Button, Group, Text, UnstyledButton} from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import {IconMoon, IconSun, IconLogout, IconSettings, IconTrash} from "@tabler/icons-react";
 import { useRouter } from 'next/navigation';
@@ -22,6 +22,7 @@ export default function Header({ opened, toggle }: HeaderProps) {
     const [openedSettings, { open: openSettings, close: closeModal }] = useDisclosure(false);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const { setActiveNoteId } = useNotes();
     
     const toggleColorScheme = () => {
         setColorScheme(colorScheme === 'dark' ? 'light' : 'dark');
@@ -115,7 +116,9 @@ export default function Header({ opened, toggle }: HeaderProps) {
             <Flex justify="space-between" align="center">
                 <Flex justify="space-between" align="center">
                     <Burger opened={opened} onClick={toggle} />
-                    <Title pl="1rem" >Notare</Title>
+                    <UnstyledButton onClick={() => setActiveNoteId(null) }>
+                        <Title pl="1rem" >Notare</Title>
+                    </UnstyledButton>
                 </Flex>
                 {mounted && (
                     <div className="flex items-center justify-center gap-4">
