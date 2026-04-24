@@ -41,7 +41,12 @@ model Tag {
   id        Int      @id @default(autoincrement())
   ownerId   Int
   owner     User     @relation("UserTags", fields: [ownerId], references: [id])
+
+  userTagId Int
   name      String
+
   notes     Note[]   @relation("NoteTags")
+
   @@unique([ownerId, name])
+  @@unique([ownerId, userTagId])
 }

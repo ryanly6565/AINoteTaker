@@ -15,6 +15,20 @@ export default function NotesOverview() {
   const { user } = useAuth();
   const router = useRouter();
 
+  //------------------------------
+  const notesByTag = notes.reduce((acc, note) => {
+
+      (note.tags ?? []).forEach(tag => {
+          const key = String(tag.id);
+          if (!acc[key]) acc[key] = [];
+          acc[key].push(note);
+      });
+
+      return acc;
+  }, {});
+  console.log("NOTES BY TAGS Overview", notesByTag)
+  //------------------------------
+
   // Sizing setup
   const height = 180;
 
@@ -57,7 +71,7 @@ export default function NotesOverview() {
       const createdNote = await createNote({
         title: '',
         content: '',
-        tag: tags[0], // Use the first available tag
+        tags: [tags[0]], // Use the first available tag
         canDelete: false
       });
       openNote(createdNote.id);
@@ -71,6 +85,20 @@ export default function NotesOverview() {
       })
     }
   };
+
+    //------------------------------
+    const notesByTag2 = notes.reduce((acc, note) => {
+
+        (note.tags ?? []).forEach(tag => {
+            const key = String(tag.id);
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(note);
+        });
+
+        return acc;
+    }, {});
+    console.log("NOTES BY TAGS Overview END", notesByTag)
+    //------------------------------
 
   return (
     <Stack>

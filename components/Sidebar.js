@@ -1,19 +1,34 @@
 import { useState } from 'react';
-import {AppShellNavbar, Button, Divider, NavLink, Skeleton, ScrollArea} from '@mantine/core';
+import {AppShellNavbar, Button, Divider, NavLink, Skeleton, ScrollArea, TextInput} from '@mantine/core';
 import { useNotes } from '../context/NotesContext';
 import {IconHome2, IconPlus, IconTrash, IconTag} from "@tabler/icons-react";
 import {notifications} from "@mantine/notifications";
 import { useRouter } from 'next/navigation';
+import { IconPencil } from "@tabler/icons-react";
 import {useAuth} from "../context/AuthContext";
 
 export default function Sidebar({ opened }) {
     const [expandedTags, setExpandedTags] = useState({});
-    const { notes, tags, activeNote, createNote, createTag, openNote, initialLoad, setActiveNoteId, updateNoteInDB } = useNotes();
+    const { notes, tags, activeNote, createNote, createTag, openNote, initialLoad, setActiveNoteId, updateNoteInDB, saveTag, updateNoteLocally } = useNotes();
+    const [editingTagId, setEditingTagId] = useState(null);
+    const [editingTagValue, setEditingTagValue] = useState("");
     const { user } = useAuth();
     const router = useRouter();
 
+    const garbageTag = tags.find(tag => tag.userTagId === -1);
+    const otherTags = tags.filter(tag => tag.userTagId !== -1);
+
     // Sort notes by tag 
-    const notesByTag = notes?.length > 0 ? Object.groupBy(notes, note => note.tag) : {};
+    const notesByTag = notes.reduce((acc, note) => {
+
+        (note.tags ?? []).forEach(tag => {
+            const key = String(tag.id);
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(note);
+        });
+
+        return acc;
+    }, {});
 
     const toggleTag = (tag) => {
         setExpandedTags(prev => ({
@@ -30,25 +45,36 @@ export default function Sidebar({ opened }) {
     const handleDrop = async (e, targetTag) => {
         e.preventDefault();
         e.stopPropagation();
-        
+
         const noteId = e.dataTransfer.getData('noteId');
         if (!noteId) return;
 
         try {
-            const note = notes.find(n => n.id === parseInt(noteId));
+            const note = notes.find(n => n.id === Number(noteId));
             if (!note) return;
 
+            const newTag = tags.find(t => t.id === targetTag);
+            if (!newTag) return;
+
+            // 1. update UI immediately
+            updateNoteLocally({
+                ...note,
+                tags: [newTag]
+            });
+
+            // 2. then persist
             await updateNoteInDB({
                 ...note,
-                tag: parseInt(targetTag)
+                tags: [newTag]
             });
 
             notifications.show({
                 color: 'green',
                 title: 'Success',
-                message: `Note moved to Tag ${targetTag}`,
+                message: `Note moved to ${newTag.name}`,
                 position: "top-center"
             });
+
         } catch (error) {
             console.error('Error updating note tag:', error);
             notifications.show({
@@ -95,7 +121,7 @@ export default function Sidebar({ opened }) {
             
             const defaultName = `Tag ${nextNumber}`;
             
-            await createTag(defaultName);
+            await createTag(defaultName, tags.length);
             notifications.show({
                 color: 'green',
                 title: 'Success',
@@ -121,7 +147,7 @@ export default function Sidebar({ opened }) {
         }
     
         // Check if there are any existing tags
-        if (tags.length === 0) {
+        if (tags.length === 1) {
           notifications.show({
             color: 'yellow',
             title: 'No Tags Available',
@@ -154,7 +180,7 @@ export default function Sidebar({ opened }) {
     if (!opened) {
         return null;
     }
-
+    
     return (
         <AppShellNavbar p="md" style={{ height: "93vh", overflow: 'auto' }}>
             <Button
@@ -198,81 +224,84 @@ export default function Sidebar({ opened }) {
             ): (
                 <>
                     {/* Garbage Tag */}
-                    <NavLink
-                        key="-1"
-                        label="Garbage"
-                        rightSection={<IconTrash />}
-                        opened={expandedTags[-1]}
-                        onClick={() => toggleTag(-1)}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, -1)}
-                        style={{
-                            cursor: 'pointer',
-                            backgroundColor: 'transparent',
-                            transition: 'background-color 0.2s',
-                            '&:hover': {
-                                backgroundColor: 'rgba(0, 0, 0, 0.05)'
-                            }
-                        }}
-                    >
-                        {notesByTag[-1]?.map(note => (
+                        {garbageTag && (
                             <NavLink
-                                key={note.id}
-                                component="button"
-                                label={note.title ? note.title : "Untitled Note"}
-                                variant="light"
-                                onClick={(e) => handleNoteClick(e, note.id)}
-                                active={activeNote?.id === note.id}
-                                draggable
-                                onDragStart={(e) => handleNoteDragStart(e, note.id)}
-                                style={{
-                                    cursor: 'grab',
-                                    '&:active': {
-                                        cursor: 'grabbing'
-                                    }
-                                }}
-                            />
-                        ))}
-                    </NavLink>
+                                key={garbageTag.id}
+                                label="Garbage"
+                                rightSection={<IconTrash />}
+                                opened={expandedTags[garbageTag.id]}
+                                onClick={() => toggleTag(garbageTag.id)}
+                                onDragOver={handleDragOver}
+                                onDrop={(e) => handleDrop(e, garbageTag.id)}
+                            >
+                                {notesByTag[garbageTag.id]?.map(note => (
+                                    <NavLink
+                                        key={note.id}
+                                        component="button"
+                                        label={note.title || "Untitled Note"}
+                                        variant="light"
+                                        onClick={(e) => handleNoteClick(e, note.id)}
+                                        active={activeNote?.id === note.id}
+                                        draggable
+                                        onDragStart={(e) => handleNoteDragStart(e, note.id)}
+                                    />
+                                ))}
+                            </NavLink>
+                        )}
 
                     {/* Regular Tags */}
-                    {tags.map(tag => (
-                        <NavLink
-                            key={tag.id}
-                            label={`${tag.name}`}
-                            opened={expandedTags[tag]}
-                            onClick={() => toggleTag(tag)}
-                            onDragOver={handleDragOver}
-                            onDrop={(e) => handleDrop(e, tag)}
-                            style={{
-                                cursor: 'pointer',
-                                backgroundColor: 'transparent',
-                                transition: 'background-color 0.2s',
-                                '&:hover': {
-                                    backgroundColor: 'rgba(0, 0, 0, 0.05)'
+                        {otherTags.map(tag => (
+                            <NavLink
+                                key={tag.id}
+                                label={
+                                    editingTagId === tag.id ? (
+                                        <TextInput
+                                            value={editingTagValue}
+                                            autoFocus
+                                            size="xs"
+                                            variant="unstyled"
+                                            onChange={(e) => setEditingTagValue(e.currentTarget.value)}
+                                            onBlur={() => {
+                                                saveTag(tag.id, editingTagValue);
+                                                setEditingTagId(null);
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter") saveTag(tag.id, editingTagValue);
+                                                if (e.key === "Escape") setEditingTagId(null);
+                                            }}
+                                        />
+                                    ) : (
+                                        tag.name
+                                    )
                                 }
-                            }}
-                        >
-                            {notesByTag[tag]?.map(note => (
-                                <NavLink
-                                    key={note.id}
-                                    component="button"
-                                    label={note.title ? note.title : "Untitled Note"}
-                                    variant="light"
-                                    onClick={(e) => handleNoteClick(e, note.id)}
-                                    active={activeNote?.id === note.id}
-                                    draggable
-                                    onDragStart={(e) => handleNoteDragStart(e, note.id)}
-                                    style={{
-                                        cursor: 'grab',
-                                        '&:active': {
-                                            cursor: 'grabbing'
-                                        }
-                                    }}
-                                />
-                            ))}
-                        </NavLink>
-                    ))}
+                                opened={expandedTags[tag.id]}
+                                onClick={() => {
+                                    if (editingTagId !== tag.id) toggleTag(tag.id);
+                                }}
+                                rightSection={
+                                    <IconPencil
+                                        size={14}
+                                        style={{ cursor: "pointer" }}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setEditingTagId(tag.id);
+                                            setEditingTagValue(tag.name);
+                                        }}
+                                    />
+                                }
+                            >
+                                {notesByTag[String(tag.id)]?.map(note => (
+                                    <NavLink
+                                        key={note.id}
+                                        component="button"
+                                        label={note.title || "Untitled Note"}
+                                        onClick={(e) => handleNoteClick(e, note.id)}
+                                        draggable
+                                        onDragStart={(e) => handleNoteDragStart(e, note.id)}
+                                    />
+                                ))}
+                            </NavLink>
+                        ))}
                 </>
             )}
         </AppShellNavbar>

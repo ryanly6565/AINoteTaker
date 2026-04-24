@@ -56,12 +56,21 @@ export async function POST(request: NextRequest) {
         // Hash password and create new user
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        await prisma.user.create({
+        const newUser = await prisma.user.create({
             data: {
                 name: username.toLowerCase(),
                 email: email.toLowerCase(),
                 password: hashedPassword
             }
+        });
+
+        
+        await prisma.tag.create({
+        data: {
+            name: "Garbage",
+            ownerId: newUser.id,
+            userTagId: -1
+        },
         });
 
         return NextResponse.json(

@@ -26,14 +26,13 @@ export async function PUT(req: NextRequest) {
           ? {
               tags: {
                 set: tags.map((t: any) => ({
-                  id: Number(t.id),
+                  id: t.id,
                 })),
               },
             }
           : {}),
       },
     });
-    console.log(tags)
 
     return NextResponse.json(updatedNote, { status: 200 });
 

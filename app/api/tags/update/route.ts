@@ -8,14 +8,7 @@ const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
-    const { name, userTagId } = await request.json();
-
-    if (!name || !userTagId) {
-      return NextResponse.json(
-        { error: "Both 'name' and 'userTagId' are required" },
-        { status: 400 }
-      );
-    }
+    const { tagId, name } = await request.json();
 
     const cookieData = await cookies()
     const session = await getIronSession<SessionData>(
@@ -29,21 +22,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const newTag = await prisma.tag.create({
+    const updatedTag = await prisma.tag.update({
+      where: {
+        id: Number(tagId),
+        ownerId: ownerId
+      },
       data: {
         name,
-        ownerId,
-        userTagId
       },
     });
 
-    return NextResponse.json(newTag, { status: 201 });
+    return NextResponse.json(updatedTag, { status: 200 });
 
   } catch (error: any) {
-    console.error("Error creating tag:", error);
+    console.error("Error updating tag:", error);
 
     return NextResponse.json(
-      { error: "Failed to create tag", details: error.message },
+      { error: "Failed to update tag", details: error.message },
       { status: 500 }
     );
   }

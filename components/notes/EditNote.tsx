@@ -23,6 +23,21 @@ const normalizeTags = (tags) =>
 export default function EditNote({ note }: EditNoteProps) {
 
     const { updateNoteLocally, updateNoteInDB, deleteNote, setActiveNoteId, closeNote, notes, revertDeletion , tags, exportNote} = useNotes();
+
+    //------------------------------
+    const notesByTag = notes.reduce((acc, note) => {
+
+        (note.tags ?? []).forEach(tag => {
+            const key = String(tag.id);
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(note);
+        });
+
+        return acc;
+    }, {});
+    console.log("NOTES BY TAGS EDIT", notesByTag)
+    //------------------------------
+
     const { history } = useChat();
     const [saving, setSaving] = useState(false);
     const [hasEdited, setHasEdited] = useState(false);
@@ -30,12 +45,16 @@ export default function EditNote({ note }: EditNoteProps) {
     const [selectedTags, setSelectedTags] = useState<string[]>(
         (note.tags ?? []).map(t => t.id.toString())
     );
-    const TRASH_TAG = -1; 
+    const TRASH_TAG = tags.find(tag => tag.userTagId === -1);
+    const otherTags = tags.filter(tag => tag.userTagId !== -1);
 
     // Update note in DB automatically shortly after user has stopped typing
     const [debouncedTitle] = useDebouncedValue(note.title, 500);
     const [debouncedContent] = useDebouncedValue(note.content, 500);
-    const [debouncedTags] = useDebouncedValue(note.tags, 500);
+
+    useEffect(() => {
+        setSelectedTags((note.tags ?? []).map(t => t.id.toString()));
+    }, [note.id]);
 
     useEffect(() => {
         // Prevent API update call on initial load
@@ -60,7 +79,7 @@ export default function EditNote({ note }: EditNoteProps) {
         }
 
         updateNote();
-    }, [debouncedTitle, debouncedContent, debouncedTags]);
+    }, [debouncedTitle, debouncedContent]);
 
     const handleTitleChange = (e: ChangeEvent<HTMLInputElement>) => {
         updateNoteLocally({ ...note, title: e.target.value });
@@ -337,32 +356,51 @@ export default function EditNote({ note }: EditNoteProps) {
         e.dataTransfer.dropEffect = "copy";
     };
 
+        //------------------------------
+    const notesByTag2 = notes.reduce((acc, note) => {
+
+        (note.tags ?? []).forEach(tag => {
+            const key = String(tag.id);
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(note);
+        });
+
+        return acc;
+    }, {});
+    console.log("NOTES BY TAGS Sidebar", notesByTag)
+    //------------------------------
+
     return (
         <Stack p={0} gap={0} mt="sm">
             <Group justify="space-between">
                 <MultiSelect
                     value={selectedTags}
-                    data={tags.map(tag => ({
-                        value: tag.id.toString(),
-                        label: tag.name
-                    }))}
+                    data={(otherTags ?? [])
+                        .filter((t): t is { id: number; name: string } =>
+                            t && typeof t === "object" && typeof t.id === "number"
+                        )
+                        .map(tag => ({
+                            value: String(tag.id),
+                            label: tag.name ?? ""
+                        }))
+                    }
                     onChange={(values) => {
                         setSelectedTags(values);
 
-                        updateNoteLocally({
-                            ...note,
-                            tags: values.map(v => {
-                                const id = Number(v);
-                                const tag = tags.find(t => t.id === id);
-
-                                return {
-                                    id,
-                                    name: tag?.name ?? ""
-                                };
-                            })
+                        const updatedTags = values.map(v => {
+                            const id = Number(v);
+                            const tag = tags.find(t => t.id === id);
+                            return {
+                                id,
+                                name: tag?.name ?? ""
+                            };
                         });
 
-                        setHasEdited(true);
+                        // Update the note's tags locally and in DB
+                        updateNoteLocally({ ...note, tags: updatedTags });
+                        updateNoteInDB({ ...note, tags: updatedTags });
+
+                        setHasEdited(true); // Mark as edited
                     }}
                     maxDropdownHeight={220}
                     placeholder="Select tags"

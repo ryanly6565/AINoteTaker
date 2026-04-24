@@ -30,7 +30,6 @@ export function NotesProvider({ children }) {
             const response = await fetch(`/api/notes/getAll`);
             if (response.ok) {
                 const data = await response.json();
-                console.log("Backend response:", data);
                 setNotes(data.notes);
                 // Extract unique tags from notes
                 setTags(data.tags);
@@ -58,7 +57,7 @@ export function NotesProvider({ children }) {
         throw new Error('Failed to create note');
     };
 
-    const createTag = async (name: string) => {
+    const createTag = async (name: string, userTagId: number) => {
         try {
             if (!user?.isLoggedIn) {
                 throw new Error('User not logged in');
@@ -69,7 +68,7 @@ export function NotesProvider({ children }) {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ name }),
+                body: JSON.stringify({ name, userTagId }),
             });
 
             if (!response.ok) {
@@ -131,28 +130,24 @@ export function NotesProvider({ children }) {
 
     // Declare one update function for automatic in-memory updates, and the other for persisting changes to DB
     const updateNoteLocally = (noteData: any) => {
-        console.log("SELECTED VALUES:", noteData);
         setNotes((prevNotes: any) =>
             prevNotes.map((note: any) => {
                 if (note.id !== noteData.id) return note;
 
-                console.log("SELECTED VALUES 12:", note.tags)
-
                 return {
                     ...note,
                     ...noteData,
-                    tags: noteData.tags ?? []
+                    tags: noteData.tags ?? note.tags
                 };
             })
         );
-
         if (activeNoteId === noteData.id) {
             setActiveNoteId(noteData.id);
         }
     };
 
     /* Update note in DB - Call periodically to persist changes */
-    const updateNoteInDB = async (noteData) => {
+    const updateNoteInDB = async (noteData: any) => {
         const safeNoteData = {
             ...noteData,
             tags: noteData.tags
@@ -170,9 +165,15 @@ export function NotesProvider({ children }) {
             const updatedNote = await response.json();
 
             setNotes((prevNotes) =>
-            prevNotes.map((note) =>
-                note.id === updatedNote.id ? updatedNote : note
-            )
+            prevNotes.map((note) => {
+                if (note.id !== updatedNote.id) return note;
+
+                return {
+                ...note,
+                ...updatedNote,
+                tags: updatedNote.tags ?? note.tags
+                };
+            })
             );
             return updatedNote;
         }
@@ -220,6 +221,25 @@ export function NotesProvider({ children }) {
             return error;
         }
     };
+
+    // edit tag name of given id tag
+    const saveTag = async (tagId: number, name: string) => {
+        try {
+            await fetch("/api/tags/update", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ tagId, name })
+            });
+
+            setTags(prev =>
+                prev.map(tag =>
+                    tag.id === tagId ? { ...tag, name } : tag
+                )
+            );
+        } catch (err) {
+            console.error("Failed to save tag", err);
+        }
+    };
     
 
     useEffect(() => {
@@ -265,7 +285,8 @@ export function NotesProvider({ children }) {
             openedNotes,
             resetContext, 
             exportNote,
-            revertDeletion
+            revertDeletion,
+            saveTag
         }}>
             {children}
         </NotesContext.Provider>

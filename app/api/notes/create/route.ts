@@ -8,7 +8,7 @@ const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
-    const { title, content, tag } = await request.json();
+    const { title, content, tags } = await request.json();
 
     const cookieData = await cookies()
     const session = await getIronSession<SessionData>(
@@ -22,13 +22,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    console.log("I AM HERE")
+    console.log(tags)
+
     const newNote = await prisma.note.create({
       data: {
         title: title || "Untitled Note",
         content: content || "",
         tags: {
           connect: {
-            id: tag.id
+            id: tags[0].id
           }
         },
         authorId,

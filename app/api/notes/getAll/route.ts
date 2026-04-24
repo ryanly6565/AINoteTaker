@@ -22,6 +22,9 @@ export async function GET(req: NextRequest) {
       where: {
         authorId: userId,
       },
+      include: {
+        tags: true,
+      },
     });
 
     const tags = await prisma.tag.findMany({
