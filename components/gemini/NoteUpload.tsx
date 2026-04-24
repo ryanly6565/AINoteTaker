@@ -9,15 +9,18 @@ import {
     NumberInput,
     ScrollArea,
     Stack, Text,
-    TextInput
+    TextInput,
+    MultiSelect
 } from "@mantine/core";
 import React, {useState} from "react";
-import {useRouter} from "next/router";
+import {useRouter} from "next/navigation";
 import {useNotes} from "@/context/NotesContext";
 
 export function NoteUpload() {
+    const [selectedTags, setSelectedTags] = useState<string[]>([])
+
     const router = useRouter();
-    const { createNote } = useNotes();
+    const { createNote, tags } = useNotes();
 
     // User input state
     const [file, setFile] = useState<File | null>(null);
@@ -52,10 +55,19 @@ export function NoteUpload() {
             // NOTE: Currently only works for .txt files
             if (file.type == "text/plain") {
                 const fileContent = await file.text();
+                const updatedTags = selectedTags.map(v => {
+                    const id = Number(v);
+                    const tag = tags.find(t => t.id === id);
+                    return {
+                        id,
+                        name: tag?.name ?? ""
+                    };
+                });
+
                 await createNote({
                     title: noteName,
                     content: fileContent,
-                    tag: tag,
+                    tags: updatedTags,
                 });
             }
 
@@ -113,17 +125,22 @@ export function NoteUpload() {
                                     size="xs"
                                 />
 
-                                <NumberInput
-                                    variant="filled"
-                                    value={tag}
-                                    onChange={handleTagChange}
-                                    allowNegative={false}
-                                    label="Tag"
-                                    placeholder="Tag Number"
-                                    allowDecimal={false}
-                                    maw={150}
-                                    size="xs"
-                                />
+                            <MultiSelect
+                                value={selectedTags}
+                                data={(tags ?? [])
+                                    .filter((t): t is { id: number; name: string } =>
+                                        t && typeof t.id === "number" && t.userTagId !== -1
+                                    )
+                                    .map(tag => ({
+                                        value: String(tag.id),
+                                        label: tag.name ?? ""
+                                    }))
+                                }
+                                onChange={setSelectedTags}
+                                label="Tags"
+                                placeholder="Select tags"
+                                maxDropdownHeight={200}
+                            />
                             </Group>
 
                             <Button

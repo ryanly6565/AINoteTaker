@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
 import { getAIService } from "@/services/ai/AIServiceFactory";
 import {getIronSession} from "iron-session";

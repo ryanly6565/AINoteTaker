@@ -14,7 +14,7 @@ export function getAIService(): IAIService {
 		if (!model) {
 			console.error("AI Model not specified.");
 		}
-
+		console.log("ENV MODEL:", process.env.GEMINI_MODEL);
 		instance = new GeminiService(apiKey, model);
 	}
 

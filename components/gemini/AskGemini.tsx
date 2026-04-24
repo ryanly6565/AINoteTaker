@@ -103,6 +103,12 @@ export default function AskGemini() {
                     maxRows={4}
                     value={question}
                     onChange={(e) => setQuestion(e.target.value)}
+                    onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSubmit();
+                        }
+                    }}
                     placeholder={activeNote ? "Ask Gemini" : "Select a note to ask questions"}
                     aria-label="Ask Gemini"
                     disabled={!activeNote}

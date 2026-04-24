@@ -22,17 +22,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("I AM HERE")
-    console.log(tags)
-
     const newNote = await prisma.note.create({
       data: {
         title: title || "Untitled Note",
         content: content || "",
         tags: {
-          connect: {
-            id: tags[0].id
-          }
+          connect: tags.map(tag => ({ id: tag.id }))
         },
         authorId,
         canDelete: false,
